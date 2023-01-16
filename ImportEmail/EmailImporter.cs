@@ -1,5 +1,6 @@
 ﻿using MailKit;
 using MailKit.Net.Imap;
+using MailKit.Search;
 using static ImportEmail.AccountToImport.AccountToImport;
 using static ImportEmail.FeatureUtil.FeatureUtil;
 
@@ -9,8 +10,6 @@ namespace ImportEmail.EmailImporter
     {
         public static void ImportEmail()
         {
-            string filePath = @"C:\";
-
             var accountsToImport = AddAccountsToImport();
 
             foreach (var account in accountsToImport)
@@ -25,14 +24,17 @@ namespace ImportEmail.EmailImporter
 
                     var inbox = imapClient.Inbox;
                     inbox.Open(FolderAccess.ReadWrite);
+                    var query = SearchQuery.All;
+                    var importEmailReceivedFromDate = DateTime.Now.AddDays(-1);
+                    query = query.And(SearchQuery.DeliveredAfter((DateTime)importEmailReceivedFromDate));
+                    var uids = inbox.Search(query).Distinct();
 
-                    Console.WriteLine($"Encontrou {inbox.Count} emails para importar");
+                    Console.WriteLine($"Encontrou {uids.Count()} emails para importar");
 
-                    for (int i = 0; i < inbox.Count; i++)
+                    foreach (var uid in uids)
                     {
-                        var message = inbox.GetMessage(i);
-
-                        filePath = Path.Combine(filePath, $"{account.User}-{message.Subject}_{i}.eml");
+                        var filePath = Path.Combine(@"D:\ImportEmailIMAP\", $"{ uid}.eml");
+                        var message = inbox.GetMessage(uid);
 
                         if (!File.Exists(filePath))
                         {
